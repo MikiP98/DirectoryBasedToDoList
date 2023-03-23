@@ -1,0 +1,401 @@
+﻿@page "/"
+@inject NavigationManager NavManager
+
+@using System.Text.Json;
+
+@using MessageType = Lib.MessageType;
+@using TDList = Lib.TDList;
+
+
+<!-- Rounded switch -->
+<label class="switch">
+    <input type="checkbox" id="btnDarkMode">
+    <span class="slider round"></span>
+</label>
+
+
+<h1>Lists</h1>
+
+<h3>Here you can see your ToDo lists :)</h3>
+
+<div id="lists" class="clearfix">
+    <!-- Here will be displayed all lists -->
+    @foreach (TDList TDList in @readLists())
+    {
+        <div class="@TDListClassesGenerator(TDList.description, TDList.favourite)" @onclick="() => TDListClick(TDList.id, TDList.name)">
+            <h2>@TDList.name</h2>
+            <h4 class="description">@TDList.description</h4>
+        </div>
+    }
+</div>
+
+
+<style>
+    /* Dynamic content CSS */
+    /*
+    article {
+    width: 100vw;
+    height: 100vh;
+    background: rgb(6,0,85);
+    background: linear-gradient(340deg, rgba(6,0,85,1) 0%, rgba(32,0,124,1) 45%, rgba(133,0,191,1) 100%);
+    }
+    */
+    .clearfix::after {
+        content: "";
+        clear: both;
+        display: table;
+    }
+
+    .TDList {
+        
+        float: left;
+        
+        
+        padding: 14px;
+        margin: 8px;
+
+        background-color: rgba(122, 132, 166, 0.6);
+        border: 5px solid rgba(122, 132, 166, 0.15);
+        backdrop-filter: blur(5px);
+
+        border-radius: 10px;
+
+        font-size: 0.45em;
+        
+        
+        --height: calc(3vh + 105px);
+        --width: calc(3vw + 250px);
+        /*
+        --height: calc(2vh + 128px);
+        --width: calc(3.236vw + 256px);
+        */ 
+        width: var(--width);
+        
+        height: var(--height);
+        transition: height 0.1s ease-out, background-color 0.1s;
+    }
+    .TDList:hover {
+        background-color: rgba(114, 122, 148, 0.75);
+        border: 5px solid rgba(114, 122, 148, 0.3);
+    }
+
+    .favourite {
+        background-color: rgba(150, 140, 144, 0.65);
+        border: 5px solid rgba(255, 220, 5, 0.3);
+    }
+    .favourite:hover {
+        background-color: rgba(154, 140, 140, 0.8);
+        border: 5px solid rgba(255, 220, 5, 0.45);
+    }
+
+    .TDListHoverable:hover {
+        height: calc(var(--height) * 2 + 16px);
+
+        /*
+        transform: scaleY(2);
+        
+        margin-bottom: calc(-1 * var(--height) - 8px);
+        margin-right: calc(var(--width) + 24px);
+        */
+
+        /*height: auto;*/
+    }
+
+    .description {
+        display: none;
+
+        font-family: monospace, monospace;
+        font-size: 2.3em;
+        
+        filter: blur(10px);
+        
+        /*-webkit-transition: 1s -webkit-filter linear;
+        -moz-transition: 1s -moz-filter linear;
+        -moz-transition: 1s filter linear;
+        -ms-transition: 1s -ms-filter linear;
+        -o-transition: 1s -o-filter linear;
+        transition: 1s filter linear, 1s -webkit-filter linear;*/
+
+        /*transition: all 2s;*/
+        
+        webkit-filter: blur(30px);
+        -moz-filter: blur(30px);
+        -o-filter: blur(30px);
+        -ms-filter: blur(30px);
+        filter: url(#blur);
+        filter: blur(30px);
+        filter: progid:DXImageTransform.Microsoft.Blur(PixelRadius='3');
+        -webkit-transition: 2s -webkit-filter linear;
+        -o-transition: 2s -o-filter linear;
+    }
+
+    .TDList:hover .description {
+        display: block;
+        
+        /*filter: blur(0px);*/
+
+        -webkit-filter: blur(0px);
+        -moz-filter: blur(0px);
+        -o-filter: blur(0px);
+        -ms-filter: blur(0px);
+        filter: progid:DXImageTransform.Microsoft.Blur(PixelRadius='0');
+        filter: blur(0px);
+    }
+
+</style>
+
+
+
+@code {
+    private bool globalData = false; // Param describing if data should be stored per windows user or globaly.
+    private static string logText;
+    private static int previuslyClickedTDListID = -1;
+
+    static string listsFolderPath = Lib.getUserAppDataRoamingDBTDLFolder() + @"lists\";
+    static void log(string msg, MessageType type = MessageType.Info) { Lib.log(msg, type); }
+
+    protected override void OnInitialized()
+    {
+        if (Lib.getDebug())
+        {
+            log("Home page initalized");
+            localLog("Home page initalized");
+        }
+    }
+
+    private static List<TDList> readLists()
+    {
+        DirectoryInfo listsFolder = new DirectoryInfo(listsFolderPath);
+
+        List<TDList> TDLists = new List<TDList>();
+        List<TDList> TDListsFavoritesPinned = new List<TDList>();
+        List<TDList> TDListsFavorites = new List<TDList>();
+        List<TDList> TDListsPinned = new List<TDList>();
+
+        int listNumber = 0;
+
+        try
+        {
+            // Determine whether the directory exists.
+            if (!listsFolder.Exists)
+            {
+                log("Couldn't find the \"lists\" directory");
+                localLog("Couldn't find the \"lists\" directory");
+
+                // Try to create the directory.
+                listsFolder.Create();
+                log("The \"lists\" directory has been created successfully.");
+                localLog("The \"lists\" directory has been created successfully.");
+            }
+            else
+            {
+                // Indicate that the directory already exists.
+                log("The \"lists\" folder has been found.");
+                localLog("The \"lists\" folder has been found.");
+            }
+            log(listsFolder.FullName);
+            localLog(listsFolder.FullName);
+
+            // Check for any folders (lists)
+            foreach (DirectoryInfo TDList in listsFolder.GetDirectories())
+            {
+                log("Found: " + TDList.Name + " folder");
+                localLog("Found: " + TDList.Name + " folder");
+
+                string description = "";
+                try
+                {
+                    description = File.ReadAllText(listsFolderPath + TDList.Name + @"\description.txt");
+
+                    /*
+                    // Create an instance of StreamReader to read a description file.
+                    // The using statement also closes the StreamReader.
+                    using (StreamReader sr = new StreamReader(listsFolderPath + TDList.Name + @"\description.txt"))
+                        {
+                        log("Reading \"" + TDList.Name + "\" description");
+                        localLog("Reading \"" + TDList.Name + "\" description");
+                        description += sr.ReadToEnd();
+                }
+                */
+                }
+                catch (Exception e)
+                {
+                    // Log error message.
+                    log("The description file could not be read: " + e.Message, MessageType.Warning);
+                    localLog("The description file could not be read: " + e.Message, MessageType.Warning);
+                }
+
+                TDListConfigJSON TDListConfigJSON = new TDListConfigJSON();
+                try
+                {
+                    TDListConfigJSON = JsonSerializer.Deserialize<TDListConfigJSON>(File.ReadAllText(listsFolderPath + TDList.Name + @"\config.json"));
+                }
+                catch (Exception e)
+                {
+                    // Log error message.
+                    log("The config file could not be read: " + e.Message, MessageType.Warning);
+                    localLog("The config file could not be read: " + e.Message, MessageType.Warning);
+                }
+
+                /*
+                switch (true)
+                {
+                case var value when value == TDListConfigJSON.favourite:
+                if (TDListConfigJSON.pinned)
+                {
+
+                break;
+                }
+                break;
+                case var value when value == TDListConfigJSON.pinned:
+
+                break;
+                default:
+                break;
+                }
+                */
+                if (TDListConfigJSON.favourite)
+                {
+                    if (TDListConfigJSON.pinned)
+                    {
+                        TDListsFavoritesPinned.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                    }
+                    else
+                    {
+                        TDListsFavorites.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                    }
+                } 
+                else if (TDListConfigJSON.pinned)
+                {
+                    TDListsPinned.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                }
+                else
+                {
+                    log("Favourite: " + TDListConfigJSON.favourite + ", Pinned: " + TDListConfigJSON.pinned);
+                    TDLists.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                }
+
+                ++listNumber;
+            }
+        }
+        catch (Exception e)
+        {
+            log("The process failed: " + e, MessageType.E);
+            localLog("The process failed: " + e, MessageType.E);
+        }
+
+        //return TDLists;
+        foreach (TDList TDList in TDListsFavoritesPinned.Concat(TDListsFavorites.Concat(TDListsPinned.Concat(TDLists))).ToList())
+        {
+            log(TDList.name);
+        }
+        return TDListsFavoritesPinned.Concat(TDListsFavorites.Concat(TDListsPinned.Concat(TDLists))).ToList();
+        //return TDListsFavoritesPinned.
+    }
+    public struct TDListConfigJSON
+    {
+        public bool favourite { get; set; }
+        public bool pinned { get; set; }
+    }
+
+    public static string TDListClassesGenerator(string description, bool favourite)
+    {
+        string classes = "TDList";
+        if (description != "") classes += " TDListHoverable";
+        if (favourite) classes += " favourite";
+        return classes;
+    }
+    public static string isTDListHoverable(string description)
+    {
+        if (description != "") return "TDList TDListHoverable"; else return "TDList";
+    }
+
+    private static string createListElement(string name, int listID, string description = "")
+    {
+        log("Creating element: " + name);
+        localLog("Creating element: " + name);
+
+        //ListElement creation
+        //descriptionsClasses.Add("description");
+        //string a = descriptionsClasses[2];
+
+        string result = "<div class=\"TDList";
+        if (description != "")
+        {
+            result += " TDListHoverable";
+        }
+        result += "\" @onclick=\"() => TDListClick(" + listID + ")\">";
+
+        result += "<h2>" + name + "</h2>";
+        result += "<h4 class=\"description\">" + description + "</h4>";
+        //result += "<h4 class=\"@descriptionsClasses[" + listID + "]\">" + description + "</h4>";
+        //log(descriptionsClasses[0]);
+
+        //result += "<style>.TDList" + listsNumber + ":hover .TDListDesc" + listsNumber + " {display: block;}</style></div>";
+        result += "</div>";
+        return result;
+    }
+
+    public void TDListClick(int id, string path)
+    {
+        log("previuslyClickedTDListID: " + previuslyClickedTDListID + ", Current Cliecked id: " + id);
+        localLog("previuslyClickedTDListID: " + previuslyClickedTDListID + ", Current Cliecked id: " + id);
+        if (previuslyClickedTDListID == id)
+        {
+            // Open the list.
+            log("Opening TDList with path: " + path);
+            localLog("Opening TDList with path: " + path);
+            NavManager.NavigateTo("/" + path);
+        }
+        else
+        {
+            // Show detail about the list.
+            previuslyClickedTDListID = id;
+        }
+    }
+    
+    public static void localLog(string msg, MessageType type = MessageType.Info, bool save = true)
+    {
+        // Modify log msg to include time and message type
+        string temporal = "[" + DateTime.Now + "] ";
+        switch (type)
+        {
+            case MessageType.Info:
+            case MessageType.I:
+                temporal += "INFO";
+                break;
+            case MessageType.Error:
+            case MessageType.E:
+                temporal += "ERROR";
+                break;
+            case MessageType.Warning:
+            case MessageType.W:
+                temporal += "WARNING";
+                break;
+        }
+        temporal += ":\t";
+        msg = temporal + msg;
+
+        // Add msg to logText
+        logText += msg + "\n";
+
+        if (save == true)
+        {
+            try
+            {
+                //Pass the filepath and filename to the StreamWriter Constructor
+                StreamWriter sw = new StreamWriter(listsFolderPath + "localLog.txt");
+
+                //Write text to file
+                sw.Write(logText);
+
+                //Close the file
+                sw.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception: " + e.Message);
+            }
+        }
+    }
+}

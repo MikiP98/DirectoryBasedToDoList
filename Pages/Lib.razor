@@ -1,0 +1,96 @@
+﻿@code {
+    private static bool debug = true;
+    public static bool getDebug() { return debug; }
+    private static string userAppDataRoamingDBTDLFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\DBTDL\";
+    public static string getUserAppDataRoamingDBTDLFolder() { return userAppDataRoamingDBTDLFolder; }
+    //private static StreamWriter logStreamWriter = new StreamWriter(userAppDataRoamingDBTDLFolder + "log.txt");
+
+    private static string logText;
+    public static void log(string msg, MessageType type = MessageType.Info)
+    {
+        // Modify log msg to include time and message type
+        string temporal = "[" + DateTime.Now + "] ";
+        switch (type)
+        {
+            case MessageType.Info:
+            case MessageType.I:
+                temporal += "INFO";
+                break;
+            case MessageType.Error:
+            case MessageType.E:
+                temporal += "ERROR";
+                break;
+            case MessageType.Warning:
+            case MessageType.W:
+                temporal += "WARNING";
+                break;
+            default:
+                temporal += "WRONG_MSG_TYPE/CRITICAL_ERROR";
+                break;
+        }
+        temporal += ":\t";
+        msg = temporal + msg;
+
+        // Add msg to logText
+        logText += msg + "\n";
+
+        //Write text to file
+        File.WriteAllText(userAppDataRoamingDBTDLFolder + "log.txt", logText);
+        //logStreamWriter.Flush();
+        //logStreamWriter.Write(logText);
+        //logStreamWriter.Write("\n");
+
+        /*
+        try
+        {
+            //Pass the filepath and filename to the StreamWriter Constructor
+            StreamWriter sw = new StreamWriter(userAppDataRoamingDBTDLFolder + "log.txt");
+
+            //Write text to file
+            sw.Write(logText);
+
+            //Close the file
+            sw.Close();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Exception: " + e.Message);
+        }
+        */
+    }
+    public enum MessageType
+    {
+        Info,
+        Important,
+        Warning,
+        Error,
+
+        I, IMP, W, E
+    }
+
+    public struct TDList
+    {
+        public string name;
+        public string description;
+        public int id;
+
+        public bool favourite;
+        public bool pinned;
+
+        public TDList(string name, string description, int id)
+        {
+            log("Using depricated constractor to create \"" + name + "\" TDList", MessageType.Warning);
+            this.name = name;
+            this.description = description;
+            this.id = id;
+        }
+        public TDList(string name, string description, int id, bool favourite, bool pinned)
+        {
+            this.name = name;
+            this.description = description;
+            this.id = id;
+            this.favourite = favourite;
+            this.pinned = pinned;
+        }
+    }
+}

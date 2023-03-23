@@ -1,0 +1,179 @@
+﻿@page "/{path}"
+@inject NavigationManager NavigationManager
+
+@using MessageType = Lib.MessageType;
+
+<h1>TDList</h1>
+
+<div id="categories">
+    @foreach (Category category in @readCategories())
+    {
+        <div class="category" @onpointerup="() => {log(clickedTDListName);}">
+            <h2>@category.name</h2>
+            <div class="TDLists">
+                @foreach (Lib.TDList TDList in @category.lists)
+                {
+                    <div class="TDList" @onpointerdown="() => {clickedTDListName = TDList.name;}">
+                        <h3>@TDList.name</h3>
+                        <h2>description</h2>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    #categories {
+        /*
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: stretch;
+        */
+        display: grid;
+        grid-auto-flow: column;
+        column-gap: 24px;
+        grid-auto-columns: 1fr;
+        
+        height: 52vh;
+
+        border: 4px solid green;
+    }
+    
+    .category {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        
+        border: 4px solid pink;
+        border-radius: 12px;
+    }
+
+    .TDList {
+        border: 4px solid red;
+        border-radius: 12px;
+
+        margin: 4px;
+        padding: 4px;
+    }
+
+    .TDList > h2 {
+        display: none;
+
+        font-size: 1.2em;
+    }
+    .TDList:hover h2 {
+        display: block;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Path { get; set; } = "";
+
+    static string userAppDataRoamingDBTDLFolder = Lib.getUserAppDataRoamingDBTDLFolder();
+    static void log(string msg, MessageType type = MessageType.Info) { Lib.log(msg, type); }
+
+    private static string TDListPath;
+
+    private static string logText = "";
+    private static string clickedTDListName = "";
+
+    protected override void OnInitialized()
+    {
+        TDListPath = userAppDataRoamingDBTDLFolder + @"lists\" + Path;
+        //log("TDList file path: " + Path);
+    }
+
+    private static List<Category> readCategories()
+    {
+        List<Category> categories = new List<Category>();
+
+        DirectoryInfo TDListFolder = new DirectoryInfo(TDListPath);
+        try
+        {
+            // Indicate that the directory exists.
+            log("TDList: \"" + TDListFolder.FullName + "\" has been found.");
+
+            // Check for any folders (categories)
+            foreach (DirectoryInfo category in TDListFolder.GetDirectories())
+            {
+                log("Found: " + category.Name + " (category) folder");
+
+                List<Lib.TDList> TDLists = new List<Lib.TDList>();
+                foreach (DirectoryInfo TDList in category.GetDirectories())
+                {
+                    log("Found: " + TDList.Name + " (TDList) folder");
+
+                    TDLists.Add(new Lib.TDList(TDList.Name, "", 0));
+                }
+                
+                categories.Add(new Category(category.Name, TDLists));
+            }
+        }
+        catch (Exception e)
+        {
+            log("The process failed: " + e, MessageType.E);
+        }
+        
+        return categories;
+    }
+
+    struct Category
+    {
+        public string name;
+        public List<Lib.TDList> lists;
+
+        public Category(string name, List<Lib.TDList> lists)
+        {
+            this.name = name;
+            this.lists = lists;
+        }
+    }
+
+    public static void localLog(string msg, MessageType type = MessageType.Info, bool save = true)
+    {
+        // Modify log msg to include time and message type
+        string temporal = "[" + DateTime.Now + "] ";
+        switch (type)
+        {
+            case MessageType.Info:
+            case MessageType.I:
+                temporal += "INFO";
+                break;
+            case MessageType.Error:
+            case MessageType.E:
+                temporal += "ERROR";
+                break;
+            case MessageType.Warning:
+            case MessageType.W:
+                temporal += "WARNING";
+                break;
+        }
+        temporal += ":\t";
+        msg = temporal + msg;
+
+        // Add msg to logText
+        logText += msg + "\n";
+
+        if (save == true)
+        {
+            try
+            {
+                //Pass the filepath and filename to the StreamWriter Constructor
+                StreamWriter sw = new StreamWriter(TDListPath + @"\localLog.txt");
+
+                //Write text to file
+                sw.Write(logText);
+
+                //Close the file
+                sw.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception: " + e.Message);
+            }
+        }
+    }
+}
