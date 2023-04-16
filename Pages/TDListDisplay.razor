@@ -8,7 +8,7 @@
 <div id="categories">
     @foreach (Category category in @readCategories())
     {
-        <div class="category" @onpointerup="() => {log(clickedTDListName);}">
+        <div class="category @category.color" @onpointerup="() => {log(clickedTDListName);}">
             <h2>@category.name</h2>
             <div class="TDLists">
                 @foreach (Lib.TDList TDList in @category.lists)
@@ -18,9 +18,24 @@
                         <h2>description</h2>
                     </div>
                 }
+                <div id="addTDList" class="TDList">
+                    <icon class="oi oi-plus"></icon>
+                </div>
             </div>
         </div>
     }
+    <div id="addCategory" class="category green" @onclick="addCategory">
+        <icon class = "oi oi-plus"></icon>
+    </div>
+    <div id="blankCategory" class="category white" @onclick="addCategory">
+        <h2>Name</h2>
+        <br />
+        <br />
+        <br />
+        <br />
+        <button>Cancel</button>
+        <button>Save</button>
+    </div>
 </div>
 
 <style>
@@ -46,10 +61,70 @@
         flex-direction: column;
         align-items: stretch;
         
-        border: 4px solid pink;
-        border-radius: 12px;
+        border-radius: 14px;
+
+        filter: opacity(50%);
+        backdrop-filter: blur(10px);
+        
+        max-width: 25vw;
+
+        --primaryColor: white;
+        background-color: var(--primaryColor);
+        border: 4px solid calc(var(--primaryColor) * 0.9);
     }
 
+    #addCategory {
+        max-width: calc(200px + 5vw + 5vh);
+        
+        justify-content: center;
+        align-items: center;
+
+        display: @addCategoryDisplay;
+    }
+    #addCategory > icon {
+        font-size: calc(24px + 1vw + 1vh);
+        
+        filter: opacity(60%);
+        
+        backdrop-filter: blur(5px);
+    }
+    
+    #blankCategory {
+        display: @blankCategoryDisplay;
+    }
+
+    
+    /* Colors: */
+    .white {
+        background-color: white;
+        border: 4px solid calc(white * 0.9);
+    }
+    .red {
+        background-color: red;
+        border: 4px solid calc(red * 0.9);
+    }
+    .orange {
+        background-color: orange;
+        border: 4px solid calc(orange * 0.9);
+    }
+    .yellow {
+        background-color: yellow;
+        border: 4px solid calc(orange * 0.9);
+    }
+    .green {
+        --primaryColor: green;
+    }
+    .blue {
+        --primaryColor: blue;
+    }
+    .purple {
+        --primaryColor: purple;
+    }
+    .black {
+        --primaryColor: black;
+    }
+
+    
     .TDList {
         border: 4px solid red;
         border-radius: 12px;
@@ -80,10 +155,24 @@
     private static string logText = "";
     private static string clickedTDListName = "";
 
+    private static string addCategoryDisplay = "flex";
+    private static string blankCategoryDisplay = "none";
+
     protected override void OnInitialized()
     {
         TDListPath = userAppDataRoamingDBTDLFolder + @"lists\" + Path;
         //log("TDList file path: " + Path);
+    }
+
+    private static void addCategory()
+    {
+        addCategoryDisplay = "none";
+        blankCategoryDisplay = "flex";
+    }
+
+    private static void addTDList()
+    {
+        
     }
 
     private static List<Category> readCategories()
@@ -101,33 +190,36 @@
             {
                 log("Found: " + category.Name + " (category) folder");
 
-                List<Lib.TDList> TDLists = new List<Lib.TDList>();
-                foreach (DirectoryInfo TDList in category.GetDirectories())
-                {
-                    log("Found: " + TDList.Name + " (TDList) folder");
+                List<Lib.TDList> TDLists = Lib.readLists(category.FullName); // Zmienić funkcje aby przyjmowała directory zamiast ścieżki?
+                //List<Lib.TDList> TDLists = new List<Lib.TDList>();
+                //foreach (DirectoryInfo TDList in category.GetDirectories())
+                //{
+                //    log("Found: " + TDList.Name + " (TDList) folder");
 
-                    TDLists.Add(new Lib.TDList(TDList.Name, "", 0));
-                }
-                
-                categories.Add(new Category(category.Name, TDLists));
+                //    TDLists.Add(new Lib.TDList(TDList.Name, "", 0));
+                //}
+
+                categories.Add(new Category(category.Name, "white", TDLists));
             }
         }
         catch (Exception e)
         {
             log("The process failed: " + e, MessageType.E);
         }
-        
+
         return categories;
     }
 
     struct Category
     {
         public string name;
+        public string color;
         public List<Lib.TDList> lists;
 
-        public Category(string name, List<Lib.TDList> lists)
+        public Category(string name, string color, List<Lib.TDList> lists)
         {
             this.name = name;
+            this.color = color;
             this.lists = lists;
         }
     }

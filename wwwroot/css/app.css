@@ -59,9 +59,9 @@ a, .btn-link {
     color: white;
 }
 
-.blazor-error-boundary::after {
-    content: "An error has occurred."
-}
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
 
 .status-bar-safe-area {
     display: none;
@@ -82,3 +82,145 @@ a, .btn-link {
         padding-left: env(safe-area-inset-left);
     }
 }
+
+
+
+
+/* Mine */
+
+article {
+    background: rgb(160,244,255);
+    background: linear-gradient(7deg, rgba(190,255,255,1) 0%, rgba(255,255,255,1) 50%);
+    /*width: 100vw;*/
+    height: 95vh;
+    overflow: hidden;
+}
+
+.darkArticle {
+    background: rgb(6,0,85);
+    background: linear-gradient(340deg, rgba(6,0,85,1) 0%, rgba(32,0,124,1) 45%, rgba(133,0,191,1) 100%);
+}
+
+
+
+
+.TDListHeader {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    grid-column-gap: 0px;
+    grid-row-gap: 0px;
+}
+
+    .TDListHeader > * {
+        cursor: pointer;
+    }
+
+    .TDListHeader > h2 {
+        cursor: default;
+    }
+
+    .TDListHeader > i {
+        margin-top: -1px;
+        grid-area: 1 / 1 / 2 / 2;
+        text-shadow: 0px 0px 0.5px;
+    }
+
+    .TDListHeader > h2 {
+        grid-area: 1 / 2 / 3 / 9;
+    }
+
+    .TDListHeader > span {
+        grid-area: 1 / 9 / 2 / 10;
+        text-shadow: 0px 0px 1px;
+    }
+
+    .TDListHeader > img {
+        grid-area: 1 / 10 / 2 / 11;
+        height: 20px;
+        width: 20px;
+        padding: 1px;
+        filter: drop-shadow(0px 0px 1px);
+        text-shadow: 0px 0px 0px;
+        /*background-image: url("images/pin_black.png");*/
+    }
+
+
+
+
+.checked {
+    color: rgb(255, 185, 5);
+}
+
+.favourite {
+    background-color: rgba(146, 139, 146, 0.65);
+    border: 5px solid rgba(255, 220, 5, 0.3);
+}
+
+.TDListHoverable:hover {
+    height: calc(var(--height) * 2 + 15.5px);
+    /*
+        transform: scaleY(2);
+        
+        margin-bottom: calc(-1 * var(--height) - 8px);
+        margin-right: calc(var(--width) + 24px);
+        */
+    /*height: auto;*/
+}
+
+.TDList:hover .description {
+    display: block;
+    /*filter: blur(0px);*/
+
+    -webkit-filter: blur(0px);
+    -moz-filter: blur(0px);
+    filter: blur(0px);
+}
+
+
+
+
+
+
+
+.gg-trash {
+    box-sizing: border-box;
+    position: relative;
+    display: block;
+    transform: scale(var(--ggs,1));
+    width: 10px;
+    height: 12px;
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 2px, inset -2px 0 0, inset 2px 0 0;
+    border-bottom-left-radius: 1px;
+    border-bottom-right-radius: 1px;
+    margin-top: 4px
+}
+
+    .gg-trash::after,
+    .gg-trash::before {
+        content: "";
+        display: block;
+        box-sizing: border-box;
+        position: absolute
+    }
+
+    .gg-trash::after {
+        background: currentColor;
+        border-radius: 3px;
+        width: 16px;
+        height: 2px;
+        top: -4px;
+        left: -5px
+    }
+
+    .gg-trash::before {
+        width: 10px;
+        height: 4px;
+        border: 2px solid;
+        border-bottom: transparent;
+        border-top-left-radius: 2px;
+        border-top-right-radius: 2px;
+        top: -7px;
+        left: -2px
+    }

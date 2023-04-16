@@ -1,13 +1,72 @@
-﻿@code {
-    private static bool debug = true;
-    public static bool getDebug() { return debug; }
+﻿@using System.Text.Json;
+
+@code {
+    // Config:
+    public static GlobalConfig globalConfig;
+    public static UserConfig userConfig;
+    public static void setDarkModeState(bool value)
+    {
+        userConfig.darkMode = value;
+    }
+
+    // Static:
     private static string userAppDataRoamingDBTDLFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\DBTDL\";
     public static string getUserAppDataRoamingDBTDLFolder() { return userAppDataRoamingDBTDLFolder; }
-    //private static StreamWriter logStreamWriter = new StreamWriter(userAppDataRoamingDBTDLFolder + "log.txt");
+
+    protected override void OnInitialized()
+    {
+        log("Library file initalized... It shouldn't have had.", MessageType.Warning);
+    }
+
+    public static void setUserConfig(UserConfig newUserConfig)
+    {
+        userConfig = newUserConfig;
+    }
+
+    public struct GlobalConfig
+    {
+        private bool forceGlobalSavingLocation { get; set; }
+
+        public GlobalConfig(bool forceGlobalSavingLocation)
+        {
+            this.forceGlobalSavingLocation = forceGlobalSavingLocation;
+        }
+    }
+    public struct UserConfig
+    {
+        public bool darkMode { get; set; }
+        public bool globalSavingLocation { get; set; } = false;
+        public bool debugLogOutput { get; set; }
+        public bool moreDebug { get; set; }
+        public bool autoSave { get; set; }
+
+        //public bool getDarkMode() { return darkMode; }
+        //public bool getGlobalSavingLocation() { return globalSavingLocation; }
+        //public bool getDebugLogOutpute() { return debugLogOutput; }
+        //public bool getAutoSave() { return autoSave; }
+
+        public UserConfig(bool darkMode, bool globalSavingLocation, bool debugLogOutput, bool moreDebug, bool autoSave)
+        {
+            this.darkMode = darkMode;
+            this.globalSavingLocation = globalSavingLocation;
+            this.debugLogOutput = debugLogOutput;
+            this.moreDebug = moreDebug;
+            this.autoSave = autoSave;
+        }
+
+        public override string ToString()
+        {
+            return "darkMode: " + darkMode + ", globalSavingLocation: " + globalSavingLocation + ", debugLogOutput: " + debugLogOutput + ", autoSave: " + autoSave;
+        }
+    }
 
     private static string logText;
     public static void log(string msg, MessageType type = MessageType.Info)
     {
+        if (!userConfig.debugLogOutput)
+        {
+            return;
+        }
         // Modify log msg to include time and message type
         string temporal = "[" + DateTime.Now + "] ";
         switch (type)
@@ -36,27 +95,6 @@
 
         //Write text to file
         File.WriteAllText(userAppDataRoamingDBTDLFolder + "log.txt", logText);
-        //logStreamWriter.Flush();
-        //logStreamWriter.Write(logText);
-        //logStreamWriter.Write("\n");
-
-        /*
-        try
-        {
-            //Pass the filepath and filename to the StreamWriter Constructor
-            StreamWriter sw = new StreamWriter(userAppDataRoamingDBTDLFolder + "log.txt");
-
-            //Write text to file
-            sw.Write(logText);
-
-            //Close the file
-            sw.Close();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine("Exception: " + e.Message);
-        }
-        */
     }
     public enum MessageType
     {
@@ -66,6 +104,120 @@
         Error,
 
         I, IMP, W, E
+    }
+
+    public static List<TDList> readLists(string path)
+    {
+        DirectoryInfo listsFolder = new DirectoryInfo(path);
+
+        List<TDList> TDLists = new List<TDList>();
+        List<TDList> TDListsFavoritesPinned = new List<TDList>();
+        List<TDList> TDListsFavorites = new List<TDList>();
+        List<TDList> TDListsPinned = new List<TDList>();
+
+        int listNumber = 0;
+
+        try
+        {
+            // Determine whether the directory exists.
+            if (!listsFolder.Exists)
+            {
+                log("Couldn't find the \"lists\" directory");
+
+                // Try to create the directory.
+                listsFolder.Create();
+                log("The \"lists\" directory has been created successfully.");
+            }
+            else
+            {
+                // Indicate that the directory already exists.
+                log("The \"lists\" folder has been found.");
+            }
+            log(listsFolder.FullName);
+
+            // Check for any folders (lists)
+            foreach (DirectoryInfo TDList in listsFolder.GetDirectories())
+            {
+                log("Found: " + TDList.Name + " folder");
+
+                string description = "";
+                try
+                {
+                    description = File.ReadAllText(path + TDList.Name + @"\description.txt");
+
+                    /*
+                    // Create an instance of StreamReader to read a description file.
+                    // The using statement also closes the StreamReader.
+                    using (StreamReader sr = new StreamReader(listsFolderPath + TDList.Name + @"\description.txt"))
+                        {
+                        log("Reading \"" + TDList.Name + "\" description");
+                        localLog("Reading \"" + TDList.Name + "\" description");
+                        description += sr.ReadToEnd();
+                }
+                */
+                }
+                catch (Exception e)
+                {
+                    // Log error message.
+                    log("The description file could not be read: " + e.Message, MessageType.Warning);
+                }
+
+                TDListConfigJSON TDListConfigJSON = new TDListConfigJSON();
+                try
+                {
+                    TDListConfigJSON = JsonSerializer.Deserialize<TDListConfigJSON>(File.ReadAllText(path + TDList.Name + @"\config.json"));
+                }
+                catch (Exception e)
+                {
+                    // Log error message.
+                    log("The config file could not be read: " + e.Message, MessageType.Warning);
+                }
+
+                if (TDListConfigJSON.favourite)
+                {
+                    if (TDListConfigJSON.pinned)
+                    {
+                        TDListsFavoritesPinned.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                    }
+                    else
+                    {
+                        TDListsFavorites.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                    }
+                }
+                else if (TDListConfigJSON.pinned)
+                {
+                    TDListsPinned.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                }
+                else
+                {
+                    log("Favourite: " + TDListConfigJSON.favourite + ", Pinned: " + TDListConfigJSON.pinned);
+                    TDLists.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
+                }
+
+                ++listNumber;
+            }
+        }
+        catch (Exception e)
+        {
+            log("The process failed: " + e, MessageType.E);
+        }
+
+        //foreach (TDList TDList in TDListsFavoritesPinned.Concat(TDListsFavorites.Concat(TDListsPinned.Concat(TDLists))).ToList())
+        //{
+        //    log(TDList.name);
+        //}
+        return TDListsFavoritesPinned.Concat(TDListsFavorites.Concat(TDListsPinned.Concat(TDLists))).ToList();
+    }
+    public struct TDListConfigJSON
+    {
+        public bool favourite { get; set; }
+        public bool pinned { get; set; }
+
+        public TDListConfigJSON(bool favourite, bool pinned)
+        {
+            this.favourite = favourite;
+            this.pinned = pinned;
+        }
     }
 
     public struct TDList

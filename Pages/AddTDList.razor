@@ -1,0 +1,221 @@
+﻿@page "/addTDList"
+@inject NavigationManager NavManager
+
+@using System.Text.Json;
+@using System.Threading;
+
+
+<h1>Create new To-Do List</h1>
+
+<div id="content">
+    <div id="preview">
+        <div id="prvName">
+            <div class="TDList">
+                <div class="TDListHeader">
+                    <i class="fa fa-trash-o"></i>
+                    <h2>@name</h2>
+                    <span class="@Index.generateStarFavouriteClasses(favourite)"></span>
+                    <img src="@Index.generateStarPinnedSrc(pinned)" alt="@Index.generateStarPinnedSrc(pinned)">
+                </div>
+            </div>
+        </div>
+        <div id="prvDesc">
+            <div class="TDList TDListHovered">
+                <div class="TDListHeader">
+                    <i class="fa fa-trash-o"></i>
+                    <h2>@name</h2>
+                    <span class="@Index.generateStarFavouriteClasses(favourite)"></span>
+                    <img src="@Index.generateStarPinnedSrc(pinned)" alt="@Index.generateStarPinnedSrc(pinned)">
+                </div>
+
+                <h4 class="description">@description</h4>
+            </div>
+        </div>
+        <div id="prvFull">full</div>
+    </div>
+    <form>
+        <label for="name">Name:</label>
+        <input id="name" name="name" type="text" value="@name" @oninput="@((ChangeEventArgs e) => { name = e.Value.ToString(); performUpdate(); } )" required />
+            
+        <label for="description">Description:</label>
+        <input id="description" name="description" type="text" value="@description" @oninput="@((ChangeEventArgs e) => { description = e.Value.ToString(); performUpdate(); } )" />
+            
+        <label for="favourite">Favourite:</label>
+        <input id="favourite" name="favourite" type="checkbox" value="@favourite" @oninput="@((ChangeEventArgs e) => { favourite = (bool) e.Value; performUpdate(); } )" />
+            
+        <label for="pinned">Pinned:</label>
+        <input id="pinned" name="pinned" type="checkbox" value="@pinned" @oninput="@((ChangeEventArgs e) => { pinned = (bool) e.Value; performUpdate(); } )" />
+    
+        <input id="buttonSubmit" type="submit" value="Create!" @onclick="submitClick" />
+    </form>
+</div>
+
+<button @onclick="performUpdate" hidden>Update</button>
+
+<button id="TMTIButton" @onclick="goToLastTDList">Take me to it!</button>
+
+<style>
+    #TMTIButton { display: @sendButtonDisplay; }
+    
+    #prvName { display: @showPrvName; }
+    #prvDesc { display: @showPrvDesc; }
+    #prvFull { display: @showPrvFull; }
+
+    #content {
+        display: grid;
+        grid-template-columns: calc(3vw + 250px + 80px) auto;
+    }
+    form {
+        /*display: grid;
+        grid-template-columns: auto auto;*/
+        display: grid;
+        grid-template-columns: calc(calc(10vw + 60px)*2/3) calc(calc(10vw + 60px)*4/3);
+        grid-template-rows: repeat(5, 1fr);
+        grid-column-gap: 0px;
+        grid-row-gap: 0px;
+        
+        min-height: max(360px, 20vh);
+        max-height: 60vh;
+    }
+
+    #buttonSubmit {
+        grid-area: 5 / 1 / 6 / 3;
+    }
+
+    .TDList {
+        padding: 14px;
+        margin: 22px;
+        background-color: @mainColor;
+        border: 5px solid @secondColor;
+        backdrop-filter: blur(5px);
+        border-radius: 10px;
+        font-size: 0.45em;
+        --height: calc(3vh + 105px);
+        --width: calc(3vw + 250px);
+        width: var(--width);
+        height: var(--height);
+        transition: height 0.1s ease-out, background-color 0.1s;
+    }
+
+    .fa {
+        font-size: 20px;
+    }
+
+    .TDListHovered {
+        background-color: @hoverMainColor;
+        border: 5px solid @hoverSecondColor;
+        
+        height: calc(var(--height) * @isBig)
+    }
+
+    .description {
+        font-family: monospace, monospace;
+        font-size: 2.3em;
+    }
+</style>
+
+@code {
+    private static void log(string msg, Lib.MessageType type = Lib.MessageType.Info) { Lib.log(msg, type); }
+
+    private static string sendButtonDisplay = "none";
+
+    private static string showPrvName = "none";
+    private static string showPrvDesc = "none";
+    private static string showPrvFull = "none";
+    private static short isBig = 1;
+    private static string mainColor = "rgba(122, 132, 166, 0.6)";
+    private static string secondColor = "rgba(122, 132, 166, 0.15)";
+    private static string hoverMainColor = "rgba(114, 122, 148, 0.75)";
+    private static string hoverSecondColor = "rgba(114, 122, 148, 0.3)";
+
+
+    private static string name;
+    private static string description;
+    private static bool favourite;
+    private static bool pinned;
+
+    protected override void OnInitialized()
+    {
+        log("AddTDList page initalized");
+    }
+
+    private static void performUpdate()
+    {
+        if (name != "" && name != null)
+        {
+            showPrvName = "block";
+            showPrvDesc = "block";
+        }
+        else
+        {
+            showPrvName = "none";
+            showPrvDesc = "none";
+        }
+
+        if (description != "" && description != null)
+        {
+            if (description.Length > 72)
+            {
+                isBig = 2;
+            } 
+            else
+            {
+                isBig = 1;
+            }
+
+            if (description.Length > 160)
+            {
+                showPrvFull = "block";
+            }
+            else
+            {
+                showPrvFull = "none";
+            }
+        }
+
+        if (favourite)
+        {
+            mainColor = "rgba(146, 139, 146, 0.65)";
+            secondColor = "rgba(255, 220, 5, 0.3)";
+
+            hoverMainColor = "rgba(146, 139, 146, 0.8)";
+            hoverSecondColor = "rgba(245, 210, 0, 0.45)";
+        }
+        else 
+        {
+            mainColor = "rgba(122, 132, 166, 0.6)";
+            secondColor = "rgba(122, 132, 166, 0.15)";
+
+            hoverMainColor = "rgba(114, 122, 148, 0.75)";
+            hoverSecondColor = "rgba(114, 122, 148, 0.3)";
+        }
+    }
+
+    private static void submitClick()
+    {
+        if (name != "")
+        {
+            sendButtonDisplay = "block";
+
+            //DirectoryInfo listsDirectory = new DirectoryInfo(Index.getListsFolderPath());
+            DirectoryInfo listsDirectory = Directory.CreateDirectory(Index.getListsFolderPath() + name);
+
+            if (description != "")
+            {
+                File.WriteAllText(listsDirectory.FullName + @"\description.txt", description);
+            }
+            if (favourite || pinned)
+            {
+                Lib.TDListConfigJSON newJson = new Lib.TDListConfigJSON(favourite, pinned);
+
+                string jsonString = JsonSerializer.Serialize(newJson);
+                File.WriteAllText(listsDirectory.FullName + @"\config.json", jsonString);
+            }
+        }
+    }
+    
+    private void goToLastTDList()
+    {
+        NavManager.NavigateTo("/" + name);
+    }
+}

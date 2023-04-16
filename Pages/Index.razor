@@ -2,16 +2,11 @@
 @inject NavigationManager NavManager
 
 @using System.Text.Json;
+@using System.Media;
 
 @using MessageType = Lib.MessageType;
+@using Plugin.Maui.Audio;
 @using TDList = Lib.TDList;
-
-
-<!-- Rounded switch -->
-<label class="switch">
-    <input type="checkbox" id="btnDarkMode">
-    <span class="slider round"></span>
-</label>
 
 
 <h1>Lists</h1>
@@ -22,126 +17,152 @@
     <!-- Here will be displayed all lists -->
     @foreach (TDList TDList in @readLists())
     {
-        <div class="@TDListClassesGenerator(TDList.description, TDList.favourite)" @onclick="() => TDListClick(TDList.id, TDList.name)">
-            <h2>@TDList.name</h2>
+        <div class="@TDListClassesGenerator(TDList.description, TDList.favourite)" @onclick="() => TDListClick(TDList.id, TDList.name)" @onmouseover="playTDListHoverSound">
+            <div class="TDListHeader">
+                @*<i class="gg-trash"></i>*@
+                <i class="fa fa-trash-o" @onclick="() => deleteTDList(TDList.name)"></i>
+                <h2>@TDList.name</h2>
+                <span class="@generateStarFavouriteClasses(TDList.favourite)" @onclick="() => configChange(TDList.name, !TDList.favourite, TDList.pinned)"></span>
+                <img src="@generateStarPinnedSrc(TDList.pinned)" alt="@generateStarPinnedSrc(TDList.pinned)" @onclick="() => configChange(TDList.name, TDList.favourite, !TDList.pinned)">
+            </div>
+            
             <h4 class="description">@TDList.description</h4>
+
+            @*<h4 class="description">
+                @TDList.description
+                <audio autoplay controls><source src="/images/test.mp3" /></audio>
+            </h4>*@
         </div>
     }
+</div>
+
+<div id="deletePopUp">
+    <form>
+        <h1>Are you sure you want to delete "@deleteTDListName" ToDo list?</h1>
+        <h2>You can not go back after proceding!</h2>
+        <label for="understandTheDeletion">I understand</label>
+        <input id="understandTheDeletion" name="understandTheDeletion" type="checkbox" @bind="understandTheDeletion" /><p>YOU NEED TO CHECK THE BOX TO DELEATE THIS TDLIST</p><br />
+        <button @onclick="deleteTDListGoBack">Go back</button>
+        <button @onclick="deleteTDListProceed">Proceed</button>
+    </form>
 </div>
 
 
 <style>
     /* Dynamic content CSS */
-    /*
-    article {
-    width: 100vw;
-    height: 100vh;
-    background: rgb(6,0,85);
-    background: linear-gradient(340deg, rgba(6,0,85,1) 0%, rgba(32,0,124,1) 45%, rgba(133,0,191,1) 100%);
+    * {
+        overflow: hidden;
     }
-    */
+    
     .clearfix::after {
         content: "";
         clear: both;
         display: table;
     }
 
+    #lists {
+        border: 3px dotted black;
+        padding: 16px;
+        overflow-y: scroll;
+        box-shadow: inset 0px 0px 16px;
+        max-height: calc(75vh - 128px);
+    }
+
     .TDList {
-        
         float: left;
-        
-        
         padding: 14px;
         margin: 8px;
-
         background-color: rgba(122, 132, 166, 0.6);
         border: 5px solid rgba(122, 132, 166, 0.15);
         backdrop-filter: blur(5px);
-
         border-radius: 10px;
-
         font-size: 0.45em;
-        
-        
         --height: calc(3vh + 105px);
         --width: calc(3vw + 250px);
-        /*
-        --height: calc(2vh + 128px);
-        --width: calc(3.236vw + 256px);
-        */ 
         width: var(--width);
-        
         height: var(--height);
         transition: height 0.1s ease-out, background-color 0.1s;
     }
+
+    .favourite {
+        background-color: rgba(146, 139, 146, 0.65);
+        border: 5px solid rgba(255, 220, 5, 0.3);
+    }
+
+    .TDListHeader > span:hover, .TDListHeader > img:hover {
+        filter: drop-shadow(0px 0px 2px) opacity(95%) brightness(110%);
+    }
+
     .TDList:hover {
         background-color: rgba(114, 122, 148, 0.75);
         border: 5px solid rgba(114, 122, 148, 0.3);
-    }
-
-    .favourite {
-        background-color: rgba(150, 140, 144, 0.65);
-        border: 5px solid rgba(255, 220, 5, 0.3);
-    }
-    .favourite:hover {
-        background-color: rgba(154, 140, 140, 0.8);
-        border: 5px solid rgba(255, 220, 5, 0.45);
-    }
-
-    .TDListHoverable:hover {
-        height: calc(var(--height) * 2 + 16px);
-
-        /*
-        transform: scaleY(2);
         
-        margin-bottom: calc(-1 * var(--height) - 8px);
-        margin-right: calc(var(--width) + 24px);
-        */
+        /*transform: scale(2); // ToDo*/
+    }
 
-        /*height: auto;*/
+    .favourite:hover {
+        background-color: rgba(146, 139, 146, 0.8);
+        border: 5px solid rgba(245, 210, 0, 0.45);
+    }
+    
+    .fa {
+        font-size: 20px;
     }
 
     .description {
         display: none;
-
         font-family: monospace, monospace;
         font-size: 2.3em;
-        
         filter: blur(10px);
-        
         /*-webkit-transition: 1s -webkit-filter linear;
-        -moz-transition: 1s -moz-filter linear;
-        -moz-transition: 1s filter linear;
-        -ms-transition: 1s -ms-filter linear;
-        -o-transition: 1s -o-filter linear;
-        transition: 1s filter linear, 1s -webkit-filter linear;*/
-
+            -moz-transition: 1s -moz-filter linear;
+            -moz-transition: 1s filter linear;
+            -ms-transition: 1s -ms-filter linear;
+            -o-transition: 1s -o-filter linear;
+            transition: 1s filter linear, 1s -webkit-filter linear;*/
         /*transition: all 2s;*/
-        
-        webkit-filter: blur(30px);
+
         -moz-filter: blur(30px);
-        -o-filter: blur(30px);
-        -ms-filter: blur(30px);
         filter: url(#blur);
         filter: blur(30px);
-        filter: progid:DXImageTransform.Microsoft.Blur(PixelRadius='3');
         -webkit-transition: 2s -webkit-filter linear;
-        -o-transition: 2s -o-filter linear;
+        -o-transition: 2s filter linear;
     }
 
-    .TDList:hover .description {
-        display: block;
-        
-        /*filter: blur(0px);*/
 
-        -webkit-filter: blur(0px);
-        -moz-filter: blur(0px);
-        -o-filter: blur(0px);
-        -ms-filter: blur(0px);
-        filter: progid:DXImageTransform.Microsoft.Blur(PixelRadius='0');
-        filter: blur(0px);
+    #deletePopUp {
+        display: @deletePopUpVisibility;
+
+        position: absolute;
+        z-index: 10;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+
+        align-content: center;
+        align-items: center;
+        align-self: center;
+        justify-content: center;
+        justify-items: center;
+        justify-self: center;
+
+        background-color: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
     }
-
+    #deletePopUp > form {
+        border-radius: 8px;
+        background-color: rgba(255, 255, 255, 0.875);
+        backdrop-filter: blur(16px) /*brightness(90%)*/;
+        padding: 32px;
+        width: 40%;
+        height: 50%;
+        box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.8);
+    }
+    #deletePopUp > form > p {
+        display: @understandTheDeletionInfoVisibility;
+        color: red;
+    }
 </style>
 
 
@@ -151,163 +172,100 @@
     private static string logText;
     private static int previuslyClickedTDListID = -1;
 
-    static string listsFolderPath = Lib.getUserAppDataRoamingDBTDLFolder() + @"lists\";
-    static void log(string msg, MessageType type = MessageType.Info) { Lib.log(msg, type); }
+    private static string deleteTDListName = "";
+    private static string deletePopUpVisibility = "none";
+
+    private static string listsFolderPath = Lib.getUserAppDataRoamingDBTDLFolder() + @"lists\";
+    public static string getListsFolderPath() { return listsFolderPath; }
+    private static void log(string msg, MessageType type = MessageType.Info) { Lib.log(msg, type); }
+    private static List<TDList> readLists() { return Lib.readLists(listsFolderPath); }
+
+    private IAudioManager audioManager;
+    private static IAudioPlayer player;
 
     protected override void OnInitialized()
     {
-        if (Lib.getDebug())
-        {
-            log("Home page initalized");
-            localLog("Home page initalized");
-        }
-    }
+        Settings.readConfig();
 
-    private static List<TDList> readLists()
+        this.audioManager = AudioManager.Current;
+
+        log("Home page initalized");
+        localLog("Home page initalized");
+    }
+    protected override async Task OnInitializedAsync()
     {
-        DirectoryInfo listsFolder = new DirectoryInfo(listsFolderPath);
-
-        List<TDList> TDLists = new List<TDList>();
-        List<TDList> TDListsFavoritesPinned = new List<TDList>();
-        List<TDList> TDListsFavorites = new List<TDList>();
-        List<TDList> TDListsPinned = new List<TDList>();
-
-        int listNumber = 0;
-
-        try
-        {
-            // Determine whether the directory exists.
-            if (!listsFolder.Exists)
-            {
-                log("Couldn't find the \"lists\" directory");
-                localLog("Couldn't find the \"lists\" directory");
-
-                // Try to create the directory.
-                listsFolder.Create();
-                log("The \"lists\" directory has been created successfully.");
-                localLog("The \"lists\" directory has been created successfully.");
-            }
-            else
-            {
-                // Indicate that the directory already exists.
-                log("The \"lists\" folder has been found.");
-                localLog("The \"lists\" folder has been found.");
-            }
-            log(listsFolder.FullName);
-            localLog(listsFolder.FullName);
-
-            // Check for any folders (lists)
-            foreach (DirectoryInfo TDList in listsFolder.GetDirectories())
-            {
-                log("Found: " + TDList.Name + " folder");
-                localLog("Found: " + TDList.Name + " folder");
-
-                string description = "";
-                try
-                {
-                    description = File.ReadAllText(listsFolderPath + TDList.Name + @"\description.txt");
-
-                    /*
-                    // Create an instance of StreamReader to read a description file.
-                    // The using statement also closes the StreamReader.
-                    using (StreamReader sr = new StreamReader(listsFolderPath + TDList.Name + @"\description.txt"))
-                        {
-                        log("Reading \"" + TDList.Name + "\" description");
-                        localLog("Reading \"" + TDList.Name + "\" description");
-                        description += sr.ReadToEnd();
-                }
-                */
-                }
-                catch (Exception e)
-                {
-                    // Log error message.
-                    log("The description file could not be read: " + e.Message, MessageType.Warning);
-                    localLog("The description file could not be read: " + e.Message, MessageType.Warning);
-                }
-
-                TDListConfigJSON TDListConfigJSON = new TDListConfigJSON();
-                try
-                {
-                    TDListConfigJSON = JsonSerializer.Deserialize<TDListConfigJSON>(File.ReadAllText(listsFolderPath + TDList.Name + @"\config.json"));
-                }
-                catch (Exception e)
-                {
-                    // Log error message.
-                    log("The config file could not be read: " + e.Message, MessageType.Warning);
-                    localLog("The config file could not be read: " + e.Message, MessageType.Warning);
-                }
-
-                /*
-                switch (true)
-                {
-                case var value when value == TDListConfigJSON.favourite:
-                if (TDListConfigJSON.pinned)
-                {
-
-                break;
-                }
-                break;
-                case var value when value == TDListConfigJSON.pinned:
-
-                break;
-                default:
-                break;
-                }
-                */
-                if (TDListConfigJSON.favourite)
-                {
-                    if (TDListConfigJSON.pinned)
-                    {
-                        TDListsFavoritesPinned.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
-                    }
-                    else
-                    {
-                        TDListsFavorites.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
-                    }
-                } 
-                else if (TDListConfigJSON.pinned)
-                {
-                    TDListsPinned.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
-                }
-                else
-                {
-                    log("Favourite: " + TDListConfigJSON.favourite + ", Pinned: " + TDListConfigJSON.pinned);
-                    TDLists.Add(new TDList(TDList.Name, description, listNumber, TDListConfigJSON.favourite, TDListConfigJSON.pinned));
-                }
-
-                ++listNumber;
-            }
-        }
-        catch (Exception e)
-        {
-            log("The process failed: " + e, MessageType.E);
-            localLog("The process failed: " + e, MessageType.E);
-        }
-
-        //return TDLists;
-        foreach (TDList TDList in TDListsFavoritesPinned.Concat(TDListsFavorites.Concat(TDListsPinned.Concat(TDLists))).ToList())
-        {
-            log(TDList.name);
-        }
-        return TDListsFavoritesPinned.Concat(TDListsFavorites.Concat(TDListsPinned.Concat(TDLists))).ToList();
-        //return TDListsFavoritesPinned.
+        player = audioManager.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("hover.mp3"));
+        //player.Volume = 0.078125f;
+        player.Volume = 0.125f;
     }
-    public struct TDListConfigJSON
+
+    private void playTDListHoverSound()
     {
-        public bool favourite { get; set; }
-        public bool pinned { get; set; }
+        player.Stop();
+        player.Play();
     }
 
-    public static string TDListClassesGenerator(string description, bool favourite)
+    private static void deleteTDList(string name)
+    {
+        previuslyClickedTDListID = -1;
+
+        deleteTDListName = name;
+        deletePopUpVisibility = "flex";
+    }
+    private static void deleteTDListGoBack()
+    {
+        deletePopUpVisibility = "none";
+    }
+    private static bool understandTheDeletion;
+    private static string understandTheDeletionInfoVisibility = "none";
+    private static void deleteTDListProceed()
+    {
+        if (understandTheDeletion)
+        {
+            Directory.Delete(listsFolderPath + deleteTDListName, true);
+            understandTheDeletionInfoVisibility = "none";
+            understandTheDeletion = false;
+            deleteTDListGoBack();
+        }
+        else
+        {
+            understandTheDeletionInfoVisibility = "initial";
+        }
+    }
+
+    private void configChange(string name, bool favorite_state, bool pinned_state)
+    {
+        previuslyClickedTDListID = -1;
+
+        log("Changing config of \"" + name + "\" ");
+        localLog("Changing config of \"" + name + "\" ");
+
+        Lib.TDListConfigJSON newJson = new Lib.TDListConfigJSON(favorite_state, pinned_state);
+
+        string jsonString = JsonSerializer.Serialize(newJson);
+        File.WriteAllText(listsFolderPath + name + @"\config.json", jsonString);
+    }
+
+
+    private static string TDListClassesGenerator(string description, bool favourite)
     {
         string classes = "TDList";
-        if (description != "") classes += " TDListHoverable";
+        if (description.Length > 72) classes += " TDListHoverable";
         if (favourite) classes += " favourite";
         return classes;
     }
-    public static string isTDListHoverable(string description)
+    private static string isTDListHoverable(string description)
     {
         if (description != "") return "TDList TDListHoverable"; else return "TDList";
+    }
+    
+    public static string generateStarFavouriteClasses(bool favourite)
+    {
+        if (favourite) { return "fa fa-star checked"; } else { return "fa fa-star"; }
+    }
+    public static string generateStarPinnedSrc(bool pinned)
+    {
+        if (pinned) { return "images/blue_pin.png"; } else { return "images/pin_black.png"; }
     }
 
     private static string createListElement(string name, int listID, string description = "")

@@ -3,9 +3,15 @@
 @using DirectoryBasedToDoList.Data
 @inject WeatherForecastService ForecastService
 
-<h1>Weather forecast</h1>
+<h1>Games</h1>
 
-<p>This component demonstrates fetching data from a service.</p>
+<div id="gamesList">
+    <div>Chess</div>
+    <div>Tic Tak Toe</div>
+    <div>4 in row</div>
+</div>
+
+@*<p>This component demonstrates fetching data from a service.</p>
 
 @if (forecasts == null)
 {
@@ -34,7 +40,7 @@ else
             }
         </tbody>
     </table>
-}
+}*@
 
 @code {
     private WeatherForecast[] forecasts;

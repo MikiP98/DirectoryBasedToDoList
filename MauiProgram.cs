@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using DirectoryBasedToDoList.Data;
+using Plugin.Maui.Audio;
 
 namespace DirectoryBasedToDoList;
 
@@ -24,6 +25,10 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<WeatherForecastService>();
 
-		return builder.Build();
+		// Mine
+		//builder.Services.AddSingleton(AudioManager.Current);
+		//builder.Services.AddTransient<Index>();
+
+        return builder.Build();
 	}
 }

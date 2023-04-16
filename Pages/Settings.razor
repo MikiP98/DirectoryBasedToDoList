@@ -1,0 +1,310 @@
+﻿@page "/settings"
+
+@using System.Text.Json;
+
+@using MessageType = Lib.MessageType;
+
+
+<h1>Settings</h1>
+
+<span>
+    <label for="btnDarkMode">Dark mode:</label>
+    <label class="switch">
+        <input type="checkbox" name="btnDarkMode" id="btnDarkMode" @bind="btnDarkModeValue" @oninput="(ChangeEventArgs e) => { if(userConfig.autoSave) { saveConfig(); }}" />
+        <span class="slider round"> </span>
+    </label>
+</span>
+
+<br />
+<label for="defaultSavingLocation">Default TDList saving location:</label>
+<input id="defaultSavingLocation" list="defaultSavingLocationList" @bind="defaultSavingLocation" @oninput="(ChangeEventArgs e) => { if(userConfig.autoSave) { saveConfig(); }}" />
+<datalist id="defaultSavingLocationList">
+    <option value="Localy" />
+    <option value="Globaly" />
+</datalist>
+
+@*<br />
+<p>Default TDList saveing location:</p>
+<input type="radio" name="defaultSavingLocation" id="saveLocaly" value="0" />
+<label for="saveLocaly">Localy (per User)</label>
+<br />
+<input type="radio" name="defaultSavingLocation" id="saveGlobaly" value="1" />
+<label for="saveGlobaly">Globaly (for all users)</label>*@
+
+<br />
+<label for="debugLogOutput">Do debugLogOutput</label>
+<input type="checkbox" name="debugLogOutput" id="debugLogOutput" @bind="debugLogOutput" @oninput="(ChangeEventArgs e) => { if(userConfig.autoSave) { saveConfig(); }}" />
+
+<br />
+<label for="moreDebug">Do moreDebug</label>
+<input type="checkbox" name="moreDebug" id="moreDebug" @bind="moreDebug" @oninput="(ChangeEventArgs e) => { if(userConfig.autoSave) { saveConfig(); }}" />
+
+<br />
+<label for="autoSave">Auto save config on change</label>
+<input type="checkbox" name="autoSave" id="autoSave" @bind="autoSave" @oninput="(ChangeEventArgs e) => { if(userConfig.autoSave) { saveConfig(); }}" />
+
+<br />
+<label @onclick="changeInfoBoxVisibylityState">info <i class="oi @arrowType"></i></label>
+<div id="infoBox" name="infoBox">
+    instalation folder: <br />
+    instalation date: <br />
+    per user save folder: @Lib.getUserAppDataRoamingDBTDLFolder()<br />
+    current user: @Environment.UserName<br />
+    global save folder: <br />
+    used space: @usedDiscSpace<br />
+    actual used space: @actualUsedDiscSpace @*dla plików mniejszych od np. 4kb w NTFS ziększyć rozmiar do 4kb*@
+</div>
+
+<br />
+<button @onclick="readConfig">Refresh settings from config file</button>
+<button id="saveConfigButton" @onclick="saveConfig">Save current settings</button>
+
+
+<style>
+    span {
+        text-align: center;
+        align-content: center;
+        align-items: center;
+        justify-content: center;
+        justify-items: center;
+    }
+    
+    i {
+        transition: 0.24609375s ease-in-out transform;
+        transform: rotate(@infoBoxArrowRotation) translateY(@infoBoxArrowOffset);
+    }
+    
+    #infoBox {
+        display: @infoBoxVisibility;
+        
+        border-radius: 1px;
+        box-shadow: inset 0 8px 9px -7px;
+        padding: 10px;
+        width: max-content;
+        
+        background: rgb(255,255,255);
+        background: linear-gradient(0deg, rgba(255,255,255,0.16) 0%, rgba(191,191,191,0.16) 75%, rgba(128,128,128,0.16) 87.5%, rgba(64,64,64,0.16) 93.75%, rgba(0,0,0,0.16) 100%);
+    }
+
+    #saveConfigButton {
+        display: @saveConfigButtonVisibility;
+    }
+
+    
+
+    /* The switch - the box around the slider */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+
+    /* Hide default HTML checkbox */
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    /* The slider */
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+
+    input:checked + .slider {
+        background-color: #2196F3;
+    }
+
+    input:focus + .slider {
+        box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(26px);
+    }
+
+    /* Rounded sliders */
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+    }
+</style>
+
+
+@code {
+    private static Lib.UserConfig userConfig;
+    private static Lib.GlobalConfig globalConfig;
+
+    private static bool btnDarkModeValue;
+    private static string defaultSavingLocation;
+    private static bool debugLogOutput;
+    private static bool moreDebug;
+    private static bool autoSave;
+
+    private static string infoBoxVisibility = "none";
+    private static string infoBoxArrowRotation = "0deg";
+    private static string infoBoxArrowOffset = "0px";
+    private static string arrowType = "oi-chevron-top";
+    private static string saveConfigButtonVisibility = "block";
+
+    private static string usedDiscSpace;
+    private static string actualUsedDiscSpace;
+
+    protected override void OnInitialized()
+    {
+        Lib.log("Setting page initialized");
+        // read config, save it to display properly and send it to "Lib"
+        readConfig();
+
+        // check used disc space
+        usedDiscSpace = addSizeMetric(actualDirSize(new DirectoryInfo(Lib.getUserAppDataRoamingDBTDLFolder()), 0));
+        actualUsedDiscSpace = addSizeMetric(actualDirSize(new DirectoryInfo(Lib.getUserAppDataRoamingDBTDLFolder()), 368));
+    }
+    public static string addSizeMetric(long sizeBytes)
+    {
+        if (sizeBytes > 1024)
+        {
+            double newBytes = sizeBytes / 1024.0;
+
+            if (newBytes > 1024)
+            {
+                newBytes /= 1024.0;
+                if (newBytes > 1024)
+                {
+                    newBytes /= 1024.0;
+                    return Math.Round(newBytes * 100) / 100 + " GiB";
+                }
+                return Math.Round(newBytes * 100) / 100 + " MiB";
+            }
+            return Math.Round(newBytes * 100) / 100 + " KiB";
+        }
+        return sizeBytes + " B";
+    }
+    public static long actualDirSize(DirectoryInfo d, short minSize)
+    {
+        long size = 0;
+        // Add file sizes.
+        FileInfo[] fis = d.GetFiles();
+        foreach (FileInfo fi in fis)
+        {
+            size += Math.Max(fi.Length, minSize);
+        }
+        // Add subdirectory sizes.
+        DirectoryInfo[] dis = d.GetDirectories();
+        foreach (DirectoryInfo di in dis)
+        {
+            size += actualDirSize(di, minSize);
+        }
+        return size;
+    }
+
+    public static void readConfig()
+    {
+        // read and save config localy
+        // global config
+
+        // user config
+        try
+        {
+            userConfig = JsonSerializer.Deserialize<Lib.UserConfig>(File.ReadAllText(Lib.getUserAppDataRoamingDBTDLFolder() + @"\config.json"));
+
+            btnDarkModeValue = userConfig.darkMode;
+
+            if (userConfig.globalSavingLocation)
+            {
+                defaultSavingLocation = "Global";
+            }
+            else
+            {
+                defaultSavingLocation = "Local";
+            }
+
+            debugLogOutput = userConfig.debugLogOutput;
+            moreDebug = userConfig.moreDebug;
+
+            if (autoSave = userConfig.autoSave)
+            {
+                saveConfigButtonVisibility = "none";
+            }
+            else
+            {
+                saveConfigButtonVisibility = "block";
+            }
+
+            sendConfigToLib();
+            Lib.log("Tried to read user config");
+
+            Lib.log("Read: " + userConfig.ToString());
+        }
+        catch (Exception e)
+        {
+            // Log error message.
+            Lib.log("The config file could not be read: " + e.Message, MessageType.Warning);
+        }
+    }
+    public static void sendConfigToLib()
+    {
+        // send config to "Lib"
+        Lib.setUserConfig(userConfig);
+    }
+    public static void saveConfig()
+    {
+        sendConfigToLib();
+
+        // save config to file
+        Lib.UserConfig newUserConfig = new Lib.UserConfig();
+        newUserConfig.darkMode = btnDarkModeValue;
+        if (defaultSavingLocation == "Global")
+        {
+            newUserConfig.globalSavingLocation = true;
+        }
+        newUserConfig.debugLogOutput = debugLogOutput;
+        newUserConfig.moreDebug = moreDebug;
+        newUserConfig.autoSave = autoSave;
+
+        userConfig = newUserConfig;
+
+        string jsonString = JsonSerializer.Serialize(newUserConfig);
+        File.WriteAllText(Lib.getUserAppDataRoamingDBTDLFolder() + @"\config.json", jsonString);
+    }
+
+    private static void changeInfoBoxVisibylityState()
+    {
+        if (infoBoxVisibility == "none")
+        {
+            infoBoxArrowRotation = "180deg";
+            infoBoxArrowOffset = "-4px";
+            infoBoxVisibility = "block";
+            return;
+        }
+        infoBoxArrowRotation = "0deg";
+        infoBoxArrowOffset = "0px";
+        infoBoxVisibility = "none";
+    }
+}
